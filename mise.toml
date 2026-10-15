@@ -1,0 +1,6 @@
+[tools]
+node = "24"
+
+[env]
+PORT = "3000"
+CORS_ORIGIN = "*"
