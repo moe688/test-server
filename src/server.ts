@@ -1,3 +1,4 @@
+import { stat } from "node:fs";
 import { createServer, IncomingMessage, ServerResponse } from "node:http";
 import { setTimeout as sleep } from "node:timers/promises";
 
@@ -7,6 +8,14 @@ const PORT = process.env.PORT ?? 3000;
 // TODO step 6: create the in-memory "database", a Map for tasks and a nextId counter.
 
 // TODO step 5: create an HttpError class that extends Error and stores a `status`.
+class HttpError extends Error {
+	constructor(status: number, message: string) {
+		super(message);
+		this.status = status;
+	}
+
+	status: number;
+}
 
 // ---------- Response helpers ----------
 
@@ -52,8 +61,11 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse) {
 		case "home":
 			sendJson(res, 200, { page: "home", value: "nothing" });
 			break;
+		case "crash":
+			throw new Error(404, "Oops, a bug");
 		default:
-			sendJson(res, 404, { page: "not found", value: "nothing" });
+			// sendJson(res, 404, { page: "not found", value: "nothing" });
+			throw new HttpError(404, "Page not found!@");
 	}
 }
 
@@ -67,7 +79,16 @@ const server = createServer(
 		});
 
 		// TODO step 5: wrap this call in try/catch and turn errors into JSON responses.
-		await handleRequest(req, res);
+		try {
+			await handleRequest(req, res);
+		} catch (err) {
+			console.log("caught: ", err);
+			if (err instanceof HttpError) {
+				sendJson(res, err.status, { error: err.message });
+			} else {
+				sendJson(res, 500, { error: "Internal server error!" });
+			}
+		}
 	},
 );
 
