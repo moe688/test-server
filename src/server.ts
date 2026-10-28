@@ -1,5 +1,4 @@
 import { createServer, IncomingMessage, ServerResponse } from "node:http";
-import { setTimeout as sleep } from "node:timers/promises";
 
 // TODO step 1: read PORT from process.env and fall back to 3000.
 const PORT = process.env.PORT ?? 3000;
@@ -26,12 +25,11 @@ const addTask = (taskTitle: string) => {
 
 // TODO step 5: create an HttpError class that extends Error and stores a `status`.
 class HttpError extends Error {
+	status: number;
 	constructor(status: number, message: string) {
 		super(message);
 		this.status = status;
 	}
-
-	status: number;
 }
 
 // ---------- Response helpers ----------
@@ -72,7 +70,15 @@ async function readJsonBody(req: IncomingMessage) {
 }
 
 // TODO step 8: check that title is a non-empty string and done is a boolean when present.
-function parseTaskInput(body) {}
+function parseTaskInput(body: any) {
+	const taskTitle = body.title;
+	if (typeof taskTitle !== "string")
+		throw new HttpError(400, "Title must be a string");
+	const cleanTitle = taskTitle.trim();
+	if (cleanTitle === "") throw new HttpError(400, "Title must be not empty");
+	if (typeof body.done !== "undefined" && typeof body.done !== "boolean")
+		throw new HttpError(400, "done must be a boolean");
+}
 
 // ---------- Route handlers ----------
 
@@ -82,16 +88,21 @@ async function handleTaskCollection(req: IncomingMessage, res: ServerResponse) {
 		sendJson(res, 200, Array.from(tasks.values()));
 	} else if (req.method === "POST") {
 		const body = await readJsonBody(req);
+		parseTaskInput(body);
 
 		const newTask = addTask(body.title);
 		sendJson(res, 201, newTask);
 	} else {
-		throw new HttpError(405, "Method not allowed");
+		throw new HttpError(405, "Method not allowed. Only GET and POST"); // Later I will add DELETE, but it hasn't been coded yet.
 	}
 }
 
 // TODO step 9: GET, PUT and DELETE for one task.
-async function handleSingleTask(req, res, id) {}
+async function handleSingleTask(
+	req: IncomingMessage,
+	res: ServerResponse,
+	id: number,
+) {}
 
 // ---------- Router ----------
 
@@ -102,17 +113,8 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse) {
 	const cleanSegments = segments.filter((segment) => segment.length > 0);
 	const resourceName = cleanSegments[0];
 	switch (resourceName) {
-		case "home":
-			sendJson(res, 200, { page: "home", value: "homepage" });
-			break;
-		case "crash":
-			throw new Error("Oops, a bug");
 		case "tasks":
 			await handleTaskCollection(req, res);
-			break;
-		case "favicon.ico":
-			res.writeHead(204);
-			res.end();
 			break;
 		default:
 			throw new HttpError(404, "Page not found!@");
@@ -134,7 +136,7 @@ const server = createServer(
 		try {
 			await handleRequest(req, res);
 		} catch (err) {
-			console.log("caught: ", err);
+			console.error("caught: ", err);
 			if (err instanceof HttpError) {
 				sendJson(res, err.status, { error: err.message });
 			} else {
