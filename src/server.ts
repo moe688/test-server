@@ -145,7 +145,7 @@ async function handleSingleTask(
 		if (tasks.has(id)) {
 			sendJson(res, 200, tasks.get(id));
 		} else {
-			throw new HttpError(405, "No task with such id found");
+			throw new HttpError(404, "No task with such id found");
 		}
 	} else if (req.method === "PUT") {
 		if (tasks.has(id)) {
@@ -155,14 +155,14 @@ async function handleSingleTask(
 			updateTask(specificTask, body.title, body.done);
 			sendNoContent(res);
 		} else {
-			throw new HttpError(405, "No task with such id found");
+			throw new HttpError(404, "No task with such id found");
 		}
 	} else if (req.method === "DELETE") {
 		if (tasks.has(id)) {
 			tasks.delete(id);
 			sendNoContent(res);
 		} else {
-			throw new HttpError(405, "No task with such id found");
+			throw new HttpError(404, "No task with such id found");
 		}
 	}
 }
