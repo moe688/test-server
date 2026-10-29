@@ -22,6 +22,12 @@ const addTask = (taskTitle: string) => {
 	nextId++;
 	return task;
 };
+const updateTask = (task: Task, newTaskTitle: string, newDone: boolean) => {
+	const updatedTask: Task = task;
+	updatedTask.title = newTaskTitle;
+	updatedTask.done = newDone ?? task.done;
+	return updatedTask;
+};
 
 // TODO step 5: create an HttpError class that extends Error and stores a `status`.
 class HttpError extends Error {
@@ -42,7 +48,10 @@ function sendJson(res: ServerResponse, status: number, data: unknown) {
 }
 
 // TODO step 9: send a 204 status with no body.
-function sendNoContent(res) {}
+function sendNoContent(res: ServerResponse) {
+	res.writeHead(204);
+	res.end();
+}
 
 // TODO step 10: set the Access-Control-Allow-Origin, Methods and Headers headers.
 function setCorsHeaders(res) {}
@@ -82,6 +91,25 @@ function parseTaskInput(body: any) {
 
 // ---------- Route handlers ----------
 
+async function handleTasks(
+	req: IncomingMessage,
+	res: ServerResponse,
+	path: string[],
+) {
+	if (path.length === 0) {
+		await handleTaskCollection(req, res);
+		return;
+	}
+	const taskId: string = path[0];
+	const taskIdAsANumber = Number(taskId);
+	const taskIdIsAnInteger = Number.isInteger(taskIdAsANumber);
+	if (taskIdIsAnInteger && taskIdAsANumber !== 0) {
+		await handleSingleTask(req, res, taskIdAsANumber);
+	} else {
+		throw new HttpError(400, "Invalid task ID");
+	}
+}
+
 // TODO steps 6 and 7: GET lists all tasks, POST creates one.
 async function handleTaskCollection(req: IncomingMessage, res: ServerResponse) {
 	if (req.method === "GET") {
@@ -93,7 +121,10 @@ async function handleTaskCollection(req: IncomingMessage, res: ServerResponse) {
 		const newTask = addTask(body.title);
 		sendJson(res, 201, newTask);
 	} else {
-		throw new HttpError(405, "Method not allowed. Only GET and POST"); // Later I will add DELETE, but it hasn't been coded yet.
+		throw new HttpError(
+			405,
+			"Method not allowed. Only GET, POST, or DELETE for a specific task",
+		);
 	}
 }
 
@@ -102,7 +133,28 @@ async function handleSingleTask(
 	req: IncomingMessage,
 	res: ServerResponse,
 	id: number,
-) {}
+) {
+	if (req.method === "GET") {
+		sendJson(res, 200, tasks.get(id));
+	} else if (req.method === "PUT") {
+		if (tasks.has(id)) {
+			const specificTask = tasks.get(id);
+			const body = await readJsonBody(req);
+			parseTaskInput(body);
+			updateTask(specificTask, body.title, body.done);
+			sendJson(res, 201, specificTask);
+		} else {
+			throw new HttpError(405, "No task with such id found");
+		}
+	} else if (req.method === "DELETE") {
+		if (tasks.has(id)) {
+			tasks.delete(id);
+			sendJson(res, 204, tasks.delete(id));
+		} else {
+			throw new HttpError(405, "No task with such id found");
+		}
+	}
+}
 
 // ---------- Router ----------
 
@@ -111,13 +163,13 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse) {
 	const url = req.url ?? "/";
 	const segments = url.split("/");
 	const cleanSegments = segments.filter((segment) => segment.length > 0);
-	const resourceName = cleanSegments[0];
+	const [resourceName, ...restOfPath] = cleanSegments;
 	switch (resourceName) {
 		case "tasks":
-			await handleTaskCollection(req, res);
+			await handleTasks(req, res, restOfPath);
 			break;
 		default:
-			throw new HttpError(404, "Page not found!@");
+			throw new HttpError(404, "Page not found!");
 	}
 }
 
@@ -146,6 +198,12 @@ const server = createServer(
 	},
 );
 
-server.listen(PORT, () =>
-	console.log(`Server listening on http://localhost:${PORT}`),
-);
+server.listen(PORT, () => {
+	console.log(`Server listening on http://localhost:${PORT}`);
+	if (!tasks.size) {
+		for (let i = 0; i < 5; i++) {
+			addTask(`example task number ${i}`);
+		}
+		console.log("Dummy data added.");
+	}
+});
