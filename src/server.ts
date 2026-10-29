@@ -54,7 +54,14 @@ function sendNoContent(res: ServerResponse) {
 }
 
 // TODO step 10: set the Access-Control-Allow-Origin, Methods and Headers headers.
-function setCorsHeaders(res) {}
+function setCorsHeaders(res: ServerResponse) {
+	res.setHeader("Access-Control-Allow-Origin", "*");
+	res.setHeader(
+		"Access-Control-Allow-Methods",
+		"GET, POST, PUT, DELETE, OPTIONS",
+	);
+	res.setHeader("Access-Control-Allow-Headers", "Content-Type");
+} // https://www.w3schools.com/nodejs/nodejs_http.asp
 
 // ---------- Request helpers ----------
 
@@ -135,21 +142,25 @@ async function handleSingleTask(
 	id: number,
 ) {
 	if (req.method === "GET") {
-		sendJson(res, 200, tasks.get(id));
+		if (tasks.has(id)) {
+			sendJson(res, 200, tasks.get(id));
+		} else {
+			throw new HttpError(405, "No task with such id found");
+		}
 	} else if (req.method === "PUT") {
 		if (tasks.has(id)) {
 			const specificTask = tasks.get(id);
 			const body = await readJsonBody(req);
 			parseTaskInput(body);
 			updateTask(specificTask, body.title, body.done);
-			sendJson(res, 201, specificTask);
+			sendNoContent(res);
 		} else {
 			throw new HttpError(405, "No task with such id found");
 		}
 	} else if (req.method === "DELETE") {
 		if (tasks.has(id)) {
 			tasks.delete(id);
-			sendJson(res, 204, tasks.delete(id));
+			sendNoContent(res);
 		} else {
 			throw new HttpError(405, "No task with such id found");
 		}
@@ -166,6 +177,7 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse) {
 	const [resourceName, ...restOfPath] = cleanSegments;
 	switch (resourceName) {
 		case "tasks":
+			setCorsHeaders(res);
 			await handleTasks(req, res, restOfPath);
 			break;
 		default:
@@ -201,7 +213,7 @@ const server = createServer(
 server.listen(PORT, () => {
 	console.log(`Server listening on http://localhost:${PORT}`);
 	if (!tasks.size) {
-		for (let i = 0; i < 5; i++) {
+		for (let i = 0; i < 15; i++) {
 			addTask(`example task number ${i}`);
 		}
 		console.log("Dummy data added.");
