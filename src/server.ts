@@ -11,6 +11,7 @@ const PORT = process.env.PORT ?? 3000;
 
 const server = createServer(
 	async (req: IncomingMessage, res: ServerResponse) => {
+		console.log("arrived at:", Date.now());
 		// TODO step 2: when the response finishes, log the method, the URL and the status code.
 		res.on("finish", () => {
 			console.log(
@@ -33,10 +34,10 @@ const server = createServer(
 
 server.listen(PORT, () => {
 	console.log(`Server listening on http://localhost:${PORT}`);
-	if (!tasks.size) {
-		for (let i = 0; i < 15; i++) {
-			addTask(`example task number ${i}`);
-		}
-		console.log("Dummy data added.");
-	}
+	// if (!tasks.size) {
+	// 	for (let i = 0; i < 15; i++) {
+	// 		addTask(`example task number ${i}`);
+	// 	}
+	// 	console.log("Dummy data added.");
+	// }
 });

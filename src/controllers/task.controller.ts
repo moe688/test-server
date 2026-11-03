@@ -25,31 +25,26 @@ export async function handleTaskCollection(
 	}
 }
 
-// TODO step 9: GET, PUT and DELETE for one task.
 export async function handleSingleTask(
 	req: IncomingMessage,
 	res: ServerResponse,
 	id: number,
 ) {
-	const getMethod = req.method === "GET";
-	const putMethod = req.method === "PUT";
-	const deleteMethod = req.method === "DELETE";
-	const idExist = tasks.has(id);
-
-	if (getMethod && idExist) {
-		sendJson(res, 200, tasks.get(id));
+	const task = tasks.get(id);
+	if (!task) {
+		throw new HttpError(404, "No task with such id found");
 	}
-	if (putMethod && idExist) {
-		const specificTask = tasks.get(id);
+	if (req.method === "GET") {
+		sendJson(res, 200, task);
+	} else if (req.method === "PUT") {
 		const body = await readJsonBody(req);
 		parseTaskInput(body);
-		updateTask(specificTask, body.title, body.done);
+		updateTask(task, body.title, body.done);
 		sendNoContent(res);
-	}
-	if (deleteMethod && idExist) {
+	} else if (req.method === "DELETE") {
 		tasks.delete(id);
 		sendNoContent(res);
 	} else {
-		throw new HttpError(404, "No task with such id found");
+		throw new HttpError(405, "Method not allowed. Only GET, PUT or DELETE");
 	}
 }
