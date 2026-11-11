@@ -1,0 +1,24 @@
+{
+  "compilerOptions": {
+    // Teach TypeScript about Node (fixes Buffer, process, ...)
+    "types": ["node"],
+
+    // Modern JavaScript + Node's module system
+    "target": "esnext",
+    "module": "nodenext",
+
+    // Node runs .ts directly → TypeScript only CHECKS, doesn't build files
+    "noEmit": true,
+
+    // Allows imports ending in .ts
+    "allowImportingTsExtensions": true,
+
+    // Only TS syntax Node can simply strip
+    "erasableSyntaxOnly": true,
+    "verbatimModuleSyntax": true,
+
+    // Extra safety checks
+    "strict": true
+  },
+  "include": ["src"]
+}
